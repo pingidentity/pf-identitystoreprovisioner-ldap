@@ -208,42 +208,40 @@ public class LdapProvisioner implements IdentityStoreUserProvisioner {
     }
 
     @Override
-    public UserResponseContextImpl readUser(ReadUserRequestContext readRequestCtx) throws IdentityStoreException
-    {
-        AttributeMap attributeMap = null;
+	public UserResponseContextImpl readUser(ReadUserRequestContext readRequestCtx) throws IdentityStoreException {
+		AttributeMap attributeMap = null;
 
-        String id = escapeCN(readRequestCtx.getUserId());
-        log.info("reading user id=" + id);
-        
-        AttributeMap userEntry = ldapHelper.getEntry("cn=" + id, ldapAttributeList, BaseDn);
+		String id = escapeCN(readRequestCtx.getUserId());
+		log.info("reading user id=" + id);
 
-        if (userEntry != null) {
-        	
-            if (permanentlyDeleteUser || isActive(id))
-            {
+		AttributeMap userEntry = ldapHelper.getEntry("cn=" + id, ldapAttributeList, BaseDn);
 
-            	attributeMap = userEntryToAttributeMap(userEntry);
-            	
-                // Print out some info to show the user attributes for testing.
-                log.info("Read User: " + id);
-                log.info("Entity ID: " + readRequestCtx.getEntityId());
-                log.info("Attributes:");
-                for (Map.Entry<String, AttributeValue> e : attributeMap.entrySet())
-                {
-                    log.info(String.format("%s => %s", e.getKey(), e.getValue().getValue()));
-                }
-                
-            }
-            else
-            {
-                // Since we're in "disable user on delete" mode and the user is inactive (disabled)
-                // the SCIM spec says to return a 404 in this case as though the user doesn't exist.
-                throw new NotFoundException(USER_NOT_FOUND);
-            }
-        } else {
-            // couldn't find the user in memory
-            throw new NotFoundException(USER_NOT_FOUND + ": " + id);
-        }
+		//the user doesn't exist if there's no information
+		if(!(userEntry.size() > 0)){
+			throw new NotFoundException(USER_NOT_FOUND);
+		}
+		
+		if (permanentlyDeleteUser || isActive(id)) {
+			attributeMap = userEntryToAttributeMap(userEntry);
+
+			// Print out some info to show the user attributes for testing.
+			log.info("Read User: " + id);
+			log.info("Entity ID: " + readRequestCtx.getEntityId());
+			log.info("Attributes:");
+			for (Map.Entry<String, AttributeValue> e : attributeMap.entrySet()) {
+				log.info(String.format("%s => %s", e.getKey(), e.getValue().getValue()));
+			}
+
+		} else {
+			// Since we're in "disable user on delete" mode and the user is
+			// inactive (disabled) the SCIM spec says to return a 404 in this 
+			// case as though the user doesn't exist.
+			throw new NotFoundException(USER_NOT_FOUND);
+		}
+
+		// Send back the response
+		return new UserResponseContextImpl(attributeMap);
+	}
 
         // Send back the response
         return new UserResponseContextImpl(attributeMap);
